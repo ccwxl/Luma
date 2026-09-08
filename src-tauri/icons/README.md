@@ -2,9 +2,9 @@
 
 原图保存在 `source/app-icon.png`（1024 × 1024，RGBA），来自用户指定的：
 
-`/Users/wxl/opensource/Launchpad/Icons/icon_1024x1024-light.png`
+`/Users/wxl/opensource/Launchpad/Icons/Launchpad Icon.icon/Assets/icon_1024x1024-dark.png`
 
-使用浅色版本作为三平台统一应用图标。此目录中的桌面图标由 Tauri CLI 生成：
+使用深色版本作为三平台统一应用图标。此目录中的桌面图标由 Tauri CLI 生成：
 
 - `icon.icns`：macOS。
 - `icon.ico` 和 `Square*Logo.png`、`StoreLogo.png`：Windows。

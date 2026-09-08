@@ -10,13 +10,15 @@
     "frontendDist": "../dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Luma",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 540,
-        "minHeight": 480
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "maximized": true,
+        "resizable": true
       }
     ],
     "security": {

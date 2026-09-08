@@ -114,6 +114,23 @@ pub fn run() {
             app.manage(Arc::new(IconCache::new(
                 app.path().app_cache_dir()?.join("icons"),
             )));
+
+            if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "macos")]
+                {
+                    use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+                    if let Err(err) = apply_vibrancy(&window, NSVisualEffectMaterial::FullScreenUI, None, Some(20.0)) {
+                        eprintln!("应用 macOS 毛玻璃效果失败: {err}");
+                    }
+                }
+
+                #[cfg(target_os = "windows")]
+                {
+                    use window_vibrancy::apply_mica;
+                    let _ = apply_mica(&window, None);
+                }
+            }
+
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())

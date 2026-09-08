@@ -2,7 +2,7 @@
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", sans-serif;
   color: #20231f;
-  background: #989a86;
+  background: transparent;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -11,11 +11,20 @@
   --icon-size: clamp(64px, 7vw, 106px);
 }
 
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  border-radius: 20px;
+}
+
 * {
   box-sizing: border-box;
-}
-body {
-  margin: 0;
 }
 button,
 input {
@@ -52,6 +61,17 @@ input {
   height: 100svh;
   min-height: 420px;
   overflow: hidden;
+  background: transparent;
+  cursor: default;
+  border-radius: 20px;
+}
+.launchpad.is-desktop {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  .launchpad.is-desktop {
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+  }
 }
 .wallpaper {
   position: absolute;
@@ -61,12 +81,52 @@ input {
   filter: blur(var(--wallpaper-blur, 8px)) saturate(0.9) brightness(0.98);
   pointer-events: none;
 }
+.launchpad.is-desktop .wallpaper {
+  background: rgba(255, 255, 255, 0.08);
+  filter: blur(var(--wallpaper-blur, 0px));
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: #f2f2f7;
+  }
+  .launchpad.is-desktop .wallpaper {
+    background: rgba(0, 0, 0, 0.16);
+  }
+  .search-field {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffffee;
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  .search-field input {
+    color: #ffffff;
+  }
+  .search-field input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+  }
+  .header-button {
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .header-button:hover {
+    background: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
+  .app-name {
+    color: #f2f2f7;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+  .page-dot span {
+    background: rgba(255, 255, 255, 0.35);
+  }
+  .page-dot.active span {
+    background: #ffffff;
+  }
+}
 .launchpad::before {
   content: "";
   position: absolute;
   z-index: -1;
   inset: 0;
-  background: #4753470a;
+  background: transparent;
   pointer-events: none;
 }
 .launcher-header {

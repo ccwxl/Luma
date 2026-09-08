@@ -86,11 +86,15 @@ function App() {
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
-      const columns = Math.max(3, Math.min(10, Math.floor(width / 150)));
-      const rows = Math.max(
+      let columns = Math.max(3, Math.min(10, Math.floor(width / 150)));
+      let rows = Math.max(
         1,
         Math.min(5, Math.floor(height / (width < 600 ? 108 : 128))),
       );
+      if (width >= 1100 && height >= 600) {
+        columns = 7;
+        rows = 5;
+      }
       setLayout((previous) =>
         previous.columns === columns && previous.rows === rows
           ? previous
@@ -152,29 +156,6 @@ function App() {
     [pageCount],
   );
 
-  const handleLaunch = useCallback(async (app: AppInfo) => {
-    if (launchPending.current || Date.now() < suppressClickUntil.current)
-      return;
-    if (!desktop) {
-      setNotice({ text: "浏览器预览 · 请在桌面版 Luma 中打开应用" });
-      return;
-    }
-    launchPending.current = true;
-    setLaunching(app.path);
-    try {
-      await launchApp(app);
-      setNotice({ text: `已打开 ${app.name}` });
-    } catch (reason) {
-      setNotice({
-        text: `无法打开 ${app.name}：${String(reason)}`,
-        error: true,
-      });
-    } finally {
-      launchPending.current = false;
-      setLaunching(null);
-    }
-  }, []);
-
   const handleClose = useCallback(async () => {
     if (!desktop) {
       setSettingsOpen(false);
@@ -188,6 +169,61 @@ function App() {
     }
   }, []);
 
+  const handleLaunch = useCallback(
+    async (app: AppInfo) => {
+      if (launchPending.current || Date.now() < suppressClickUntil.current)
+        return;
+      if (!desktop) {
+        setNotice({ text: "浏览器预览 · 请在桌面版 Luma 中打开应用" });
+        return;
+      }
+      launchPending.current = true;
+      setLaunching(app.path);
+      try {
+        await launchApp(app);
+        setNotice({ text: `已打开 ${app.name}` });
+        if (desktop) {
+          void handleClose();
+        }
+      } catch (reason) {
+        setNotice({
+          text: `无法打开 ${app.name}：${String(reason)}`,
+          error: true,
+        });
+      } finally {
+        launchPending.current = false;
+        setLaunching(null);
+      }
+    },
+    [handleClose],
+  );
+
+  const handleBackgroundClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (
+        Date.now() < suppressClickUntil.current ||
+        dragging ||
+        settingsOpen ||
+        closed
+      )
+        return;
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      if (
+        !target.closest(".app-button") &&
+        !target.closest(".search-field") &&
+        !target.closest(".header-actions") &&
+        !target.closest(".pagination") &&
+        !target.closest(".settings-dialog") &&
+        !target.closest(".notice") &&
+        !target.closest(".empty-state")
+      ) {
+        void handleClose();
+      }
+    },
+    [dragging, settingsOpen, closed, handleClose],
+  );
+
   useEffect(() => {
     const onShortcut = (event: globalThis.KeyboardEvent) => {
       if (event.isComposing || event.keyCode === 229) return;
@@ -195,6 +231,14 @@ function App() {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
+        if (settingsOpen) {
+          setSettingsOpen(false);
+          return;
+        }
+        if (search) {
+          setSearch("");
+          return;
+        }
         void handleClose();
         return;
       }
@@ -273,8 +317,9 @@ function App() {
 
   return (
     <main
-      className={`launchpad${settings.reducedMotion ? " reduced-motion" : ""}`}
+      className={`launchpad${desktop ? " is-desktop" : ""}${settings.reducedMotion ? " reduced-motion" : ""}`}
       aria-label="应用启动器"
+      onClick={handleBackgroundClick}
       style={
         { "--wallpaper-blur": `${settings.wallpaperBlur}px` } as CSSProperties
       }
