@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "luma",
-        "width": 800,
-        "height": 600
+        "title": "Luma",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 540,
+        "minHeight": 480
       }
     ],
     "security": {

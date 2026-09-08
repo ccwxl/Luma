@@ -2018,11 +2018,18 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 name = "luma"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "gio",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
+ "tempfile",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -2196,6 +2203,7 @@ dependencies = [
  "block2",
  "objc2",
  "objc2-core-foundation",
+ "objc2-core-graphics",
  "objc2-foundation",
 ]
 
