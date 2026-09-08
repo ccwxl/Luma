@@ -15,9 +15,15 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL;
 
+mod icons;
+
 pub(super) struct WindowsPlatform;
 
 impl ApplicationApi for WindowsPlatform {
+    fn get_app_icon(&self, app: &AppInfo) -> Option<String> {
+        icons::get_app_icon(Path::new(&app.path))
+    }
+
     fn get_installed_apps(&self) -> Vec<AppInfo> {
         // Known Folder API 支持用户移动/重定向后的开始菜单目录。
         let dirs = [FOLDERID_Programs, FOLDERID_CommonPrograms]
@@ -144,7 +150,7 @@ fn scan_start_menu(mut dirs: Vec<PathBuf>) -> Vec<AppInfo> {
                         .to_string_lossy()
                         .into_owned(),
                     path: path.to_string_lossy().into_owned(),
-                    // 快捷方式/可执行文件的图标通常是嵌入资源，尚未导出到本地文件。
+                    // 图标由 Shell 按启动入口提取，不需要独立的图标文件路径。
                     icon_path: None,
                 });
             }

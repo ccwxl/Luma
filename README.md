@@ -18,7 +18,8 @@
 设置中可调整背景模糊、减少动态效果以及清理图标缓存。外观设置保存在本机。
 
 图标使用前端内存缓存、图片预解码和相邻页预加载；后端按批读取，并把图标缓存在应用缓存目录的
-`icons/` 中。应用或图标文件更新后会自动失效。macOS 通过系统图标接口生成 WebView 可显示的 PNG；
+`icons/` 中。应用入口或本地图标文件更新后会自动失效。macOS 和 Windows 通过系统图标接口生成 WebView 可显示的 PNG；
+Windows 由 Shell 读取快捷方式的自定义图标和程序嵌入图标，保留透明度，最高生成 256 × 256 像素。
 没有可用图标的平台入口显示通用应用图标。
 
 ## 平台接口
@@ -42,7 +43,7 @@
 - `AppInfo` 字段为 `name: string`、`path: string`、`icon_path: string | null`。
 
 `path` 是平台启动入口的绝对路径，前端应原样传回。`icon_path` 仅在已取得本地图标文件时返回；
-Windows 嵌入图标和 Linux 主题图标目前返回 `null`。Windows 列表覆盖开始菜单中注册的应用，
+Windows 的 `icon_path` 返回 `null`，图标通过 `get_app_icons` 提取；Linux 主题图标目前返回 `null`。Windows 列表覆盖开始菜单中注册的应用，
 没有开始菜单入口的便携应用或商店应用不在扫描范围内。Linux 遵循桌面环境的隐藏规则及用户级覆盖规则。
 
 扫描和启动运行在 Tauri 后台线程。新增平台能力时，先扩展 `ApplicationApi`，再补齐各平台实现。

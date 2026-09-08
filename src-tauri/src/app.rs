@@ -119,7 +119,12 @@ pub fn run() {
                 #[cfg(target_os = "macos")]
                 {
                     use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
-                    if let Err(err) = apply_vibrancy(&window, NSVisualEffectMaterial::FullScreenUI, None, Some(20.0)) {
+                    if let Err(err) = apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::FullScreenUI,
+                        None,
+                        Some(20.0),
+                    ) {
                         eprintln!("应用 macOS 毛玻璃效果失败: {err}");
                     }
                 }
