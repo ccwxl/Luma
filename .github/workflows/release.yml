@@ -1,0 +1,176 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-tauri:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "macos-latest"
+            args: "--target universal-apple-darwin"
+          - platform: "windows-latest"
+            args: ""
+          - platform: "ubuntu-24.04"
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Linux)
+        if: startsWith(matrix.platform, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libsoup-3.0-dev javascriptcoregtk-4.1 libjavascriptcoregtk-4.1-dev libnm-dev xdg-utils
+
+      - name: Rust setup
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Node.js setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install Frontend Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri App
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI: true
+        with:
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }}
+
+      - name: Rename and Prepare Artifacts
+        shell: bash
+        run: |
+          if [[ "${{ matrix.args }}" == *"--target universal"* ]]; then
+            ARCH="universal"
+          elif [[ "${{ matrix.args }}" == *"--target aarch64"* ]]; then
+            ARCH="aarch64"
+          elif [[ "${{ matrix.args }}" == *"--target x86_64"* ]]; then
+            ARCH="x64"
+          elif [[ "${{ matrix.platform }}" == *"ubuntu"* ]]; then
+            ARCH="amd64"
+          elif [[ "${{ matrix.platform }}" == *"windows"* ]]; then
+            ARCH="x64"
+          else
+            ARCH="unknown"
+          fi
+
+          echo "Processing artifacts for ARCH: $ARCH on ${{ matrix.platform }}"
+          mkdir -p artifacts-out
+
+          VER_CLEAN="${{ github.ref_name }}"
+          VER_CLEAN="${VER_CLEAN#v}"
+          if [ -z "$VER_CLEAN" ]; then
+            VER_CLEAN="0.1.0"
+          fi
+
+          # 1. macOS 处理 (DMG 安装包)
+          if [[ "${{ matrix.platform }}" == *"macos"* ]]; then
+            find src-tauri/target -name "*.dmg" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_${ARCH}.dmg \; 2>/dev/null || find target -name "*.dmg" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_${ARCH}.dmg \; 2>/dev/null || true
+            find src-tauri/target -name "*.app.tar.gz" -exec cp {} artifacts-out/Luma_${ARCH}.app.tar.gz \; 2>/dev/null || find target -name "*.app.tar.gz" -exec cp {} artifacts-out/Luma_${ARCH}.app.tar.gz \; 2>/dev/null || true
+          fi
+
+          # 2. Windows 处理 (NSIS Setup 安装包 + 便携单文件 exe + MSI)
+          if [[ "${{ matrix.platform }}" == *"windows"* ]]; then
+            find src-tauri/target -name "*setup.exe" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_x64-setup.exe \; 2>/dev/null || find target -name "*setup.exe" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_x64-setup.exe \; 2>/dev/null || true
+            find src-tauri/target -name "*.msi" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_x64.msi \; 2>/dev/null || find target -name "*.msi" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_x64.msi \; 2>/dev/null || true
+            cp src-tauri/target/release/luma.exe artifacts-out/Luma_${VER_CLEAN}_x64_portable.exe 2>/dev/null || cp target/release/luma.exe artifacts-out/Luma_${VER_CLEAN}_x64_portable.exe 2>/dev/null || true
+          fi
+
+          # 3. Linux 处理 (AppImage + DEB)
+          if [[ "${{ matrix.platform }}" == *"ubuntu"* ]]; then
+            find src-tauri/target -name "*.AppImage" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_${ARCH}.AppImage \; 2>/dev/null || find target -name "*.AppImage" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_${ARCH}.AppImage \; 2>/dev/null || true
+            find src-tauri/target -name "*.deb" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_${ARCH}.deb \; 2>/dev/null || find target -name "*.deb" -exec cp {} artifacts-out/Luma_${VER_CLEAN}_${ARCH}.deb \; 2>/dev/null || true
+          fi
+
+          echo "Contents of artifacts-out:"
+          ls -la artifacts-out/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-${{ matrix.platform }}-${{ strategy.job-index }}
+          path: artifacts-out/*
+          if-no-files-found: warn
+
+  publish-release:
+    needs: build-tauri
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+          pattern: "release-assets-*"
+          merge-multiple: true
+
+      - name: Extract Release Notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "Extracting release notes for version $VERSION"
+
+          if [ -f README.md ]; then
+            awk -v ver="$VERSION" '
+              BEGIN { capture=0 }
+              $0 ~ "^### " ver { capture=1; next }
+              capture && $0 ~ "^### v" { capture=0; exit }
+              capture { print }
+            ' README.md > release_notes.md
+          fi
+
+          if [ ! -s release_notes.md ]; then
+            echo "## Luma ${VERSION}" > release_notes.md
+            echo "" >> release_notes.md
+            echo "基于 Tauri 2 + React 的跨平台应用启动器。" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "### 下载安装" >> release_notes.md
+            echo "- **macOS**: 下载 \`.dmg\` 文件，双击拖拽至 Applications 即可。" >> release_notes.md
+            echo "- **Windows**: 下载 \`-setup.exe\` 安装包或 \`_portable.exe\` 便携版。" >> release_notes.md
+            echo "- **Linux**: 下载 \`.AppImage\`（赋予执行权限即可直接运行）或 \`.deb\` 安装。" >> release_notes.md
+          fi
+
+      - name: Create or Update GitHub Release
+        uses: ncipollo/release-action@v1
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+        with:
+          allowUpdates: true
+          name: "Luma ${{ github.ref_name }}"
+          bodyFile: "release_notes.md"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: "all-artifacts/**/*"
+          artifactErrorsFailBuild: false
+          replacesArtifacts: true
+          makeLatest: true
+
