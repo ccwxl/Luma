@@ -2,7 +2,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
-const host = process.env.TAURI_DEV_HOST;
+const tauriDevHost = process.env.TAURI_DEV_HOST;
+// On Windows, `localhost` can resolve to IPv6 while WebView2 expects the
+// frontend server on IPv4. Pin local desktop development to the IPv4 loopback
+// so the address Vite listens on exactly matches Tauri's devUrl.
+const host = tauriDevHost || "127.0.0.1";
 
 // https://vite.dev/config/
 export default defineConfig(() => ({
@@ -16,11 +20,11 @@ export default defineConfig(() => ({
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
-    hmr: host
+    host,
+    hmr: tauriDevHost
       ? {
           protocol: "ws",
-          host,
+          host: tauriDevHost,
           port: 1421,
         }
       : undefined,
