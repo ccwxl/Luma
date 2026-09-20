@@ -34,7 +34,7 @@ impl HotCornerState {
 mod macos {
     use super::{HotCorner, HotCornerState};
     use objc2::MainThreadMarker;
-    use objc2_app_kit::{NSEvent, NSScreen};
+    use objc2_app_kit::{NSApplication, NSEvent, NSScreen};
     use std::sync::{Arc, RwLock};
     use std::thread;
     use std::time::{Duration, Instant};
@@ -96,6 +96,13 @@ mod macos {
         let _ = app.show();
         let _ = window.show();
         let _ = window.maximize();
+
+        if let Some(mtm) = MainThreadMarker::new() {
+            let ns_app = NSApplication::sharedApplication(mtm);
+            #[allow(deprecated)]
+            ns_app.activateIgnoringOtherApps(true);
+        }
+
         let _ = window.set_focus();
     }
 
