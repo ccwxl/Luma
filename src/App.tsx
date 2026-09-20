@@ -8,8 +8,11 @@ import {
 } from "react";
 import {
   ArrowClockwiseIcon,
+  CaretDownIcon,
   CaretLeftIcon,
   CaretRightIcon,
+  CheckIcon,
+  FolderOpenIcon,
   GearSixIcon,
   MagnifyingGlassIcon,
   SquaresFourIcon,
@@ -24,10 +27,29 @@ import {
   getInstalledApps,
   launchApp,
   preloadAppIcons,
+  revealApp,
   type AppInfo,
 } from "./lib/apps";
+import {
+  appSortOptions,
+  filterAndSortApps,
+  type AppSortMode,
+} from "./lib/appSearch";
 import { readSettings, saveSettings } from "./lib/settings";
 import "./App.css";
+
+type AppContextMenu = {
+  app: AppInfo;
+  x: number;
+  y: number;
+};
+
+const userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent;
+const fileManagerName = /Mac|iPhone|iPad/.test(userAgent)
+  ? "Finder"
+  : /Windows/.test(userAgent)
+    ? "文件资源管理器"
+    : "文件管理器";
 
 function App() {
   const [apps, setApps] = useState<AppInfo[]>([]);
@@ -47,9 +69,14 @@ function App() {
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [iconVersion, setIconVersion] = useState(0);
+  const [sortMode, setSortMode] = useState<AppSortMode>("name-asc");
+  const [sortOpen, setSortOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<AppContextMenu | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const firstAppRef = useRef<HTMLButtonElement>(null);
+  const contextMenuActionRef = useRef<HTMLButtonElement>(null);
+  const pendingFocusIndex = useRef<number | null>(null);
   const wheel = useRef({ x: 0, y: 0, last: 0, lockedUntil: 0 });
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
@@ -112,14 +139,12 @@ function App() {
   useEffect(() => () => clearTimeout(wheelTimer.current), []);
 
   const filtered = useMemo(
-    () =>
-      apps.filter((app) =>
-        app.name
-          .toLocaleLowerCase()
-          .includes(search.trim().toLocaleLowerCase()),
-      ),
-    [apps, search],
+    () => filterAndSortApps(apps, search, sortMode),
+    [apps, search, sortMode],
   );
+  const activeSortLabel =
+    appSortOptions.find((option) => option.value === sortMode)?.label ??
+    "应用排序";
   const pageSize = layout.columns * layout.rows;
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount - 1);
@@ -134,6 +159,21 @@ function App() {
       ),
     [filtered, pageSize, pageCount],
   );
+
+  useEffect(() => {
+    const index = pendingFocusIndex.current;
+    if (index === null) return;
+    const button = gridRef.current?.querySelector<HTMLButtonElement>(
+      `[data-app-index="${index}"]`,
+    );
+    if (!button) return;
+    pendingFocusIndex.current = null;
+    button.focus({ preventScroll: true });
+  }, [currentPage, pages]);
+
+  useEffect(() => {
+    if (contextMenu) contextMenuActionRef.current?.focus({ preventScroll: true });
+  }, [contextMenu]);
 
   useEffect(() => {
     if (loading || settingsOpen || closed) return;
@@ -154,6 +194,24 @@ function App() {
         searchRef.current?.focus({ preventScroll: true });
     },
     [pageCount],
+  );
+
+  const focusAppAt = useCallback(
+    (index: number) => {
+      if (index < 0 || index >= filtered.length) return;
+      const targetPage = Math.floor(index / pageSize);
+      if (targetPage === currentPage) {
+        gridRef.current
+          ?.querySelector<HTMLButtonElement>(`[data-app-index="${index}"]`)
+          ?.focus({ preventScroll: true });
+        return;
+      }
+      pendingFocusIndex.current = index;
+      setPage(targetPage);
+      setDragOffset(0);
+      setDragging(false);
+    },
+    [currentPage, filtered.length, pageSize],
   );
 
   const handleClose = useCallback(async () => {
@@ -198,6 +256,22 @@ function App() {
     [handleClose],
   );
 
+  const handleReveal = useCallback(async (app: AppInfo) => {
+    setContextMenu(null);
+    if (!desktop) {
+      setNotice({ text: `浏览器预览 · 桌面版可在${fileManagerName}中显示应用` });
+      return;
+    }
+    try {
+      await revealApp(app);
+    } catch (reason) {
+      setNotice({
+        text: `无法在${fileManagerName}中显示 ${app.name}：${String(reason)}`,
+        error: true,
+      });
+    }
+  }, []);
+
   const handleBackgroundClick = useCallback(
     (event: React.MouseEvent) => {
       if (
@@ -210,10 +284,20 @@ function App() {
       const target = event.target as HTMLElement | null;
       if (!target) return;
       if (
+        (sortOpen && !target.closest(".sort-picker")) ||
+        (contextMenu && !target.closest(".app-context-menu"))
+      ) {
+        setSortOpen(false);
+        setContextMenu(null);
+        return;
+      }
+      if (
         !target.closest(".app-button") &&
         !target.closest(".search-field") &&
+        !target.closest(".sort-picker") &&
         !target.closest(".header-actions") &&
         !target.closest(".pagination") &&
+        !target.closest(".app-context-menu") &&
         !target.closest(".settings-dialog") &&
         !target.closest(".notice") &&
         !target.closest(".empty-state")
@@ -221,7 +305,14 @@ function App() {
         void handleClose();
       }
     },
-    [dragging, settingsOpen, closed, handleClose],
+    [
+      dragging,
+      settingsOpen,
+      closed,
+      sortOpen,
+      contextMenu,
+      handleClose,
+    ],
   );
 
   useEffect(() => {
@@ -231,6 +322,14 @@ function App() {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
+        if (contextMenu) {
+          setContextMenu(null);
+          return;
+        }
+        if (sortOpen) {
+          setSortOpen(false);
+          return;
+        }
         if (settingsOpen) {
           setSettingsOpen(false);
           return;
@@ -254,7 +353,42 @@ function App() {
         searchRef.current?.select();
         return;
       }
+      if (sortOpen || contextMenu) return;
+
+      const target = event.target;
+      const editing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement;
+      const appButton =
+        target instanceof HTMLElement
+          ? target.closest<HTMLButtonElement>(".app-button")
+          : null;
+
       if (
+        !modifier &&
+        !event.altKey &&
+        appButton &&
+        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(
+          event.key,
+        )
+      ) {
+        event.preventDefault();
+        const index = Number(appButton.dataset.appIndex);
+        if (!Number.isInteger(index)) return;
+        if (event.key === "ArrowLeft") focusAppAt(Math.max(0, index - 1));
+        if (event.key === "ArrowRight")
+          focusAppAt(Math.min(filtered.length - 1, index + 1));
+        if (event.key === "ArrowDown") focusAppAt(index + layout.columns);
+        if (event.key === "ArrowUp") {
+          if (index - layout.columns >= 0) focusAppAt(index - layout.columns);
+          else searchRef.current?.focus({ preventScroll: true });
+        }
+        return;
+      }
+
+      if (
+        !editing &&
+        !appButton &&
         !modifier &&
         !event.altKey &&
         (event.key === "ArrowLeft" || event.key === "ArrowRight")
@@ -263,15 +397,7 @@ function App() {
         changePage(currentPage + (event.key === "ArrowRight" ? 1 : -1));
         return;
       }
-      if (event.key === "Enter" && search.trim()) {
-        event.preventDefault();
-        if (!event.repeat && !loading && filtered[0])
-          void handleLaunch(filtered[0]);
-        return;
-      }
-      const editing =
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement;
+
       if (!editing && !modifier && !event.altKey && event.key.length === 1) {
         event.preventDefault();
         setSearch((value) => value + event.key);
@@ -285,12 +411,14 @@ function App() {
     currentPage,
     changePage,
     filtered,
+    layout.columns,
     search,
+    sortOpen,
+    contextMenu,
     settingsOpen,
     closed,
-    loading,
     handleClose,
-    handleLaunch,
+    focusAppAt,
   ]);
 
   function finishSwipe(offset: number) {
@@ -326,49 +454,99 @@ function App() {
     >
       <div className="wallpaper" aria-hidden="true" />
       <header className="launcher-header">
-        <form
-          className="search-field"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (filtered[0] && !loading) void handleLaunch(filtered[0]);
-          }}
-        >
-          <MagnifyingGlassIcon size={18} aria-hidden="true" />
-          <input
-            ref={searchRef}
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(0);
-              setDragOffset(0);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "ArrowDown" && filtered.length) {
-                event.preventDefault();
-                firstAppRef.current?.focus({ preventScroll: true });
-              }
-            }}
-            aria-label="搜索应用"
-            placeholder="搜索"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {search && (
+        <div className="search-shell">
+          <div className="sort-picker">
             <button
-              className="clear-search"
               type="button"
-              aria-label="清除搜索"
+              className="sort-trigger"
+              aria-label={`应用排序：${activeSortLabel}`}
+              aria-haspopup="menu"
+              aria-expanded={sortOpen}
+              title={`应用排序：${activeSortLabel}`}
               onClick={() => {
-                setSearch("");
-                setPage(0);
-                searchRef.current?.focus();
+                setContextMenu(null);
+                setSortOpen((open) => !open);
               }}
             >
-              <XIcon size={14} weight="bold" />
+              <CaretDownIcon
+                size={21}
+                weight="bold"
+                className={sortOpen ? "is-open" : undefined}
+              />
             </button>
-          )}
-        </form>
+            {sortOpen && (
+              <div className="sort-menu" role="menu" aria-label="应用排序方式">
+                {appSortOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={sortMode === option.value}
+                    className={sortMode === option.value ? "active" : undefined}
+                    onClick={() => {
+                      setSortMode(option.value);
+                      setSortOpen(false);
+                      setPage(0);
+                      setDragOffset(0);
+                    }}
+                  >
+                    <span>{option.label}</span>
+                    {sortMode === option.value && (
+                      <CheckIcon size={15} weight="bold" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <form
+            className="search-field"
+            role="search"
+            onClick={(event) => {
+              const target = event.target as HTMLElement;
+              if (!target.closest("button")) searchRef.current?.focus();
+            }}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (filtered[0] && !loading) void handleLaunch(filtered[0]);
+            }}
+          >
+            <MagnifyingGlassIcon size={18} aria-hidden="true" />
+            <input
+              ref={searchRef}
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(0);
+                setDragOffset(0);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" && filtered.length) {
+                  event.preventDefault();
+                  firstAppRef.current?.focus({ preventScroll: true });
+                }
+              }}
+              aria-label="搜索应用"
+              placeholder="搜索"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {search && (
+              <button
+                className="clear-search"
+                type="button"
+                aria-label="清除搜索"
+                onClick={() => {
+                  setSearch("");
+                  setPage(0);
+                  searchRef.current?.focus();
+                }}
+              >
+                <XIcon size={14} weight="bold" />
+              </button>
+            )}
+          </form>
+        </div>
         <div className="header-actions">
           <button
             className="header-button"
@@ -516,7 +694,7 @@ function App() {
           </div>
         ) : (
           <div
-            key={`${search}-${pageSize}`}
+            key={`${search}-${sortMode}-${pageSize}`}
             className={`page-track${dragging ? " is-dragging" : ""}`}
             style={{
               transform: `translate3d(calc(${-currentPage * 100}% + ${dragOffset}px), 0, 0)`,
@@ -543,12 +721,44 @@ function App() {
                     <li className="app-cell" key={app.path}>
                       <button
                         className={`app-button${launching === app.path ? " launching" : ""}`}
+                        data-app-index={pageIndex * pageSize + index}
                         ref={
                           pageIndex === currentPage && index === 0
                             ? firstAppRef
                             : undefined
                         }
                         onClick={() => void handleLaunch(app)}
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setSortOpen(false);
+                          setContextMenu({
+                            app,
+                            x: Math.max(
+                              10,
+                              Math.min(event.clientX, window.innerWidth - 218),
+                            ),
+                            y: Math.max(
+                              10,
+                              Math.min(event.clientY, window.innerHeight - 76),
+                            ),
+                          });
+                        }}
+                        onKeyDown={(event) => {
+                          if (
+                            event.key !== "ContextMenu" &&
+                            !(event.shiftKey && event.key === "F10")
+                          )
+                            return;
+                          event.preventDefault();
+                          const rect = event.currentTarget.getBoundingClientRect();
+                          setSortOpen(false);
+                          setContextMenu({
+                            app,
+                            x: Math.min(rect.left, window.innerWidth - 218),
+                            y: Math.min(rect.bottom + 6, window.innerHeight - 76),
+                          });
+                        }}
                         disabled={launching === app.path}
                         title={app.name}
                       >
@@ -605,6 +815,25 @@ function App() {
             `${filtered.length} 个应用，第 ${currentPage + 1} 页，共 ${pageCount} 页`}
         </span>
       </nav>
+      {contextMenu && (
+        <div
+          className="app-context-menu"
+          role="menu"
+          aria-label={`${contextMenu.app.name} 操作`}
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <button
+            ref={contextMenuActionRef}
+            type="button"
+            role="menuitem"
+            onClick={() => void handleReveal(contextMenu.app)}
+          >
+            <FolderOpenIcon size={17} />
+            <span>在 {fileManagerName} 中显示</span>
+          </button>
+        </div>
+      )}
       <SettingsDialog
         open={settingsOpen}
         settings={settings}

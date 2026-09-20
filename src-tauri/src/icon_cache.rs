@@ -109,6 +109,7 @@ mod tests {
             name: "Test".into(),
             path: "/test.app".into(),
             icon_path: None,
+            installed_at: None,
         }
     }
 

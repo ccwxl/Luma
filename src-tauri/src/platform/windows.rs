@@ -152,6 +152,7 @@ fn scan_start_menu(mut dirs: Vec<PathBuf>) -> Vec<AppInfo> {
                     path: path.to_string_lossy().into_owned(),
                     // 图标由 Shell 按启动入口提取，不需要独立的图标文件路径。
                     icon_path: None,
+                    installed_at: None,
                 });
             }
         }

@@ -48,6 +48,7 @@ fn desktop_app_info(app: DesktopAppInfo) -> Option<AppInfo> {
         name: app.display_name().to_string(),
         path: path.to_string_lossy().into_owned(),
         icon_path,
+        installed_at: None,
     })
 }
 

@@ -201,6 +201,7 @@ mod tests {
             name: "快捷方式".into(),
             path: link_path.to_string_lossy().into_owned(),
             icon_path: None,
+            installed_at: None,
         };
         let data = crate::platform::get_app_icon(&app).expect("Windows must extract a real icon");
         let png = STANDARD

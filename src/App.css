@@ -137,8 +137,12 @@ input {
   justify-content: center;
   padding-top: clamp(26px, 4.1vh, 53px);
 }
-.search-field {
+.search-shell {
+  position: relative;
   width: clamp(280px, 32vw, 626px);
+}
+.search-field {
+  width: 100%;
   height: clamp(36px, 3.8vh, 47px);
   border-radius: 999px;
   background: #fff6;
@@ -153,6 +157,7 @@ input {
     box-shadow 0.2s;
   box-shadow: 0 8px 24px #4f50420b;
   color: #30332ed9;
+  cursor: text;
 }
 .search-field:focus-within {
   background: #fffa;
@@ -185,6 +190,75 @@ input {
   flex-shrink: 0;
   border-radius: 50%;
   background: #36412f14;
+}
+.sort-picker {
+  position: absolute;
+  z-index: 8;
+  right: calc(100% + 10px);
+  top: 0;
+}
+.sort-trigger {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: clamp(36px, 3.8vh, 47px);
+  border: 1px solid #ffffff25;
+  border-radius: 13px;
+  color: #30382da8;
+  background: #ffffff36;
+  box-shadow: 0 8px 24px #4f50420b;
+  transition:
+    color 0.2s,
+    background 0.2s;
+}
+.sort-trigger:hover,
+.sort-trigger[aria-expanded="true"] {
+  color: #253020;
+  background: #ffffff70;
+}
+.sort-trigger svg {
+  transition: transform 0.18s ease;
+}
+.sort-trigger svg.is-open {
+  transform: rotate(180deg);
+}
+.sort-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 176px;
+  padding: 6px;
+  border: 1px solid #ffffffa0;
+  border-radius: 13px;
+  color: #2d352b;
+  background: #f4f5eef2;
+  box-shadow: 0 14px 42px #2835272e;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  animation: menu-arrive 0.14s ease-out;
+}
+.sort-menu button,
+.app-context-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 13px;
+  text-align: left;
+}
+.sort-menu button:hover,
+.sort-menu button:focus-visible,
+.app-context-menu button:hover,
+.app-context-menu button:focus-visible {
+  outline: none;
+  background: #475b4114;
+  box-shadow: none;
+}
+.sort-menu button.active {
+  font-weight: 550;
 }
 .header-actions {
   position: absolute;
@@ -401,6 +475,24 @@ input {
 .notice-error {
   color: #8a2925;
 }
+.app-context-menu {
+  position: fixed;
+  z-index: 20;
+  width: 208px;
+  padding: 6px;
+  border: 1px solid #ffffffa0;
+  border-radius: 13px;
+  color: #2d352b;
+  background: #f4f5eef2;
+  box-shadow: 0 14px 42px #2835273d;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  animation: menu-arrive 0.14s ease-out;
+}
+.app-context-menu button {
+  justify-content: flex-start;
+  gap: 9px;
+}
 .loading-app {
   display: flex;
   flex-direction: column;
@@ -448,6 +540,12 @@ input {
     margin-top: 0;
   }
 }
+@keyframes menu-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
 @keyframes pulse {
   to {
     opacity: 0.4;
@@ -477,9 +575,15 @@ input {
     flex-basis: 92px;
     padding-top: 42px;
   }
+  .search-shell {
+    width: min(70vw, 360px);
+  }
   .search-field {
     height: 34px;
-    width: min(70vw, 360px);
+  }
+  .sort-trigger {
+    width: 40px;
+    height: 34px;
   }
   .search-field input {
     font-size: 14px;
@@ -645,4 +749,29 @@ input {
     11px -apple-system,
     BlinkMacSystemFont,
     sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .launchpad .sort-trigger {
+    color: rgba(255, 255, 255, 0.82);
+    background: rgba(255, 255, 255, 0.13);
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+  .launchpad .sort-trigger:hover,
+  .launchpad .sort-trigger[aria-expanded="true"] {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+  }
+  .launchpad .sort-menu,
+  .launchpad .app-context-menu {
+    color: #f7f7f8;
+    background: rgba(39, 41, 39, 0.94);
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+  .launchpad .sort-menu button:hover,
+  .launchpad .sort-menu button:focus-visible,
+  .launchpad .app-context-menu button:hover,
+  .launchpad .app-context-menu button:focus-visible {
+    background: rgba(255, 255, 255, 0.13);
+  }
 }

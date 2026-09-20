@@ -1,9 +1,11 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 
 export interface AppInfo {
   name: string;
   path: string;
   icon_path: string | null;
+  installed_at?: number | null;
   icon_data?: string | null;
 }
 
@@ -24,6 +26,10 @@ export async function getInstalledApps(): Promise<AppInfo[]> {
 
 export async function launchApp(app: AppInfo) {
   if (desktop) await invoke("launch_app", { appPath: app.path });
+}
+
+export async function revealApp(app: AppInfo) {
+  if (desktop) await revealItemInDir(app.path);
 }
 
 export async function closeApp() {

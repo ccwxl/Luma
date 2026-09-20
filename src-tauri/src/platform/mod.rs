@@ -2,6 +2,7 @@ use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::Path;
+use std::time::UNIX_EPOCH;
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -28,6 +29,9 @@ pub struct AppInfo {
     pub path: String,
     /// 仅在能获得本地图标文件时返回路径。
     pub icon_path: Option<String>,
+    /// 应用入口的创建时间，用作跨平台的安装时间近似值。
+    #[serde(default)]
+    pub installed_at: Option<u64>,
 }
 
 /// 所有桌面平台都必须实现的应用管理接口。
@@ -81,8 +85,22 @@ fn normalize_apps(mut apps: Vec<AppInfo>) -> Vec<AppInfo> {
     // 先去重再排序，避免同一路径的不同名称在排序后不相邻。
     let mut seen = HashSet::new();
     apps.retain(|app| seen.insert(app.path.clone()));
+    for app in &mut apps {
+        app.installed_at = installation_timestamp(Path::new(&app.path));
+    }
     apps.sort_by_cached_key(|app| (app.name.to_lowercase(), app.path.clone()));
     apps
+}
+
+fn installation_timestamp(path: &Path) -> Option<u64> {
+    let metadata = std::fs::metadata(path).ok()?;
+    metadata
+        .created()
+        .or_else(|_| metadata.modified())
+        .ok()?
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .map(|duration| duration.as_secs())
 }
 
 #[cfg(test)]
@@ -103,6 +121,7 @@ mod tests {
                 name: name.into(),
                 path: path.into(),
                 icon_path: None,
+                installed_at: None,
             })
             .collect(),
         );
@@ -111,6 +130,19 @@ mod tests {
             apps.iter().map(|app| app.name.as_str()).collect::<Vec<_>>(),
             ["alpha", "Beta", "Zulu"]
         );
+    }
+
+    #[test]
+    fn records_an_installation_timestamp_for_existing_entries() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        let apps = normalize_apps(vec![AppInfo {
+            name: "Test".into(),
+            path: file.path().to_string_lossy().into_owned(),
+            icon_path: None,
+            installed_at: None,
+        }]);
+
+        assert!(apps[0].installed_at.is_some());
     }
 
     #[test]

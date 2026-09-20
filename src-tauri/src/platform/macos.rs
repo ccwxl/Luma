@@ -91,6 +91,7 @@ fn scan_dir(dir: &Path, depth: usize, apps: &mut Vec<AppInfo>) {
                     .into_owned(),
                 path: path.to_string_lossy().into_owned(),
                 icon_path: find_app_icon(&path),
+                installed_at: None,
             });
         } else {
             scan_dir(&path, depth + 1, apps);
