@@ -37,8 +37,12 @@ export async function closeApp() {
   if (desktop) await invoke("close_app");
 }
 
-export async function setHotCorner(corner: HotCorner) {
-  if (desktop) await invoke("set_hot_corner", { corner });
+export async function setHotCorner(
+  corner: HotCorner,
+  triggerDelayMs: number,
+) {
+  if (desktop)
+    await invoke("set_hot_corner", { corner, triggerDelayMs });
 }
 
 type IconRecord = {

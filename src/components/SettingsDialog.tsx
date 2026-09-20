@@ -84,7 +84,7 @@ export default function SettingsDialog({
           <label className="setting-row">
             <span>
               屏幕触发角
-              <small>鼠标在所选角落停留约 0.15 秒即可显示 Luma</small>
+              <small>鼠标在所选角落停留后显示 Luma</small>
             </span>
             <select
               aria-label="屏幕触发角"
@@ -102,6 +102,29 @@ export default function SettingsDialog({
               <option value="bottom-left">左下角</option>
               <option value="bottom-right">右下角</option>
             </select>
+          </label>
+          <label className="setting-row">
+            <span>
+              触发延时
+              <small>越短响应越快，也越容易误触</small>
+            </span>
+            <span className="setting-range">
+              <output>{settings.hotCornerDelayMs} ms</output>
+              <input
+                aria-label="触发延时"
+                type="range"
+                min={50}
+                max={1000}
+                step={10}
+                value={settings.hotCornerDelayMs}
+                onChange={(event) =>
+                  onChange({
+                    ...settings,
+                    hotCornerDelayMs: Number(event.target.value),
+                  })
+                }
+              />
+            </span>
           </label>
           {settings.hotCorner !== "off" && (
             <p className="setting-note">

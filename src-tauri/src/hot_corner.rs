@@ -12,27 +12,49 @@ pub enum HotCorner {
     BottomRight,
 }
 
+const DEFAULT_TRIGGER_DELAY_MS: u64 = 80;
+const MIN_TRIGGER_DELAY_MS: u64 = 50;
+const MAX_TRIGGER_DELAY_MS: u64 = 1_000;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HotCornerConfig {
+    pub corner: HotCorner,
+    pub trigger_delay_ms: u64,
+}
+
+impl Default for HotCornerConfig {
+    fn default() -> Self {
+        Self {
+            corner: HotCorner::Off,
+            trigger_delay_ms: DEFAULT_TRIGGER_DELAY_MS,
+        }
+    }
+}
+
 #[derive(Default)]
-pub struct HotCornerState(Mutex<HotCorner>);
+pub struct HotCornerState(Mutex<HotCornerConfig>);
 
 impl HotCornerState {
-    pub fn get(&self) -> HotCorner {
-        self.0.lock().map(|corner| *corner).unwrap_or_default()
+    pub fn get(&self) -> HotCornerConfig {
+        self.0.lock().map(|config| *config).unwrap_or_default()
     }
 
-    pub fn set(&self, corner: HotCorner) -> Result<(), String> {
-        *self.0.lock().map_err(|err| err.to_string())? = corner;
+    pub fn set(&self, corner: HotCorner, trigger_delay_ms: u64) -> Result<(), String> {
+        *self.0.lock().map_err(|err| err.to_string())? = HotCornerConfig {
+            corner,
+            trigger_delay_ms: trigger_delay_ms.clamp(MIN_TRIGGER_DELAY_MS, MAX_TRIGGER_DELAY_MS),
+        };
         Ok(())
     }
 
     pub fn enabled(&self) -> bool {
-        self.get() != HotCorner::Off
+        self.get().corner != HotCorner::Off
     }
 }
 
 #[cfg(target_os = "macos")]
 mod macos {
-    use super::{HotCorner, HotCornerState};
+    use super::{HotCorner, HotCornerConfig, HotCornerState};
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSApplication, NSEvent, NSScreen};
     use std::sync::{Arc, RwLock};
@@ -41,7 +63,6 @@ mod macos {
     use tauri::{AppHandle, Manager};
 
     const POLL_INTERVAL: Duration = Duration::from_millis(50);
-    const TRIGGER_DELAY: Duration = Duration::from_millis(150);
     const SCREEN_REFRESH_INTERVAL: Duration = Duration::from_secs(2);
     const CORNER_MARGIN: f64 = 16.0;
 
@@ -120,7 +141,7 @@ mod macos {
             .spawn(move || {
                 let mut entered_at: Option<Instant> = None;
                 let mut latched = false;
-                let mut previous_corner = HotCorner::Off;
+                let mut previous_config = HotCornerConfig::default();
                 let mut refreshed_at = Instant::now();
 
                 loop {
@@ -140,14 +161,14 @@ mod macos {
                         }
                     }
 
-                    let corner = app.state::<HotCornerState>().get();
-                    if corner != previous_corner {
-                        previous_corner = corner;
+                    let config = app.state::<HotCornerState>().get();
+                    if config != previous_config {
+                        previous_config = config;
                         entered_at = None;
                         latched = false;
                     }
 
-                    if corner == HotCorner::Off {
+                    if config.corner == HotCorner::Off {
                         thread::sleep(POLL_INTERVAL);
                         continue;
                     }
@@ -156,9 +177,9 @@ mod macos {
                     let inside = frames
                         .read()
                         .map(|frames| {
-                            frames
-                                .iter()
-                                .any(|frame| frame.contains_corner(location.x, location.y, corner))
+                            frames.iter().any(|frame| {
+                                frame.contains_corner(location.x, location.y, config.corner)
+                            })
                         })
                         .unwrap_or(false);
 
@@ -167,7 +188,7 @@ mod macos {
                         latched = false;
                     } else if !latched {
                         let entered = entered_at.get_or_insert_with(Instant::now);
-                        if entered.elapsed() >= TRIGGER_DELAY {
+                        if entered.elapsed() >= Duration::from_millis(config.trigger_delay_ms) {
                             latched = true;
                             let handle = app.clone();
                             if let Err(err) = app.run_on_main_thread(move || show(&handle)) {
@@ -218,3 +239,18 @@ pub use macos::show;
 
 #[cfg(not(target_os = "macos"))]
 pub fn start(_app: tauri::AppHandle) {}
+
+#[cfg(test)]
+mod state_tests {
+    use super::*;
+
+    #[test]
+    fn clamps_configured_delay_to_supported_range() {
+        let state = HotCornerState::default();
+        state.set(HotCorner::TopLeft, 1).unwrap();
+        assert_eq!(state.get().trigger_delay_ms, MIN_TRIGGER_DELAY_MS);
+
+        state.set(HotCorner::BottomRight, 10_000).unwrap();
+        assert_eq!(state.get().trigger_delay_ms, MAX_TRIGGER_DELAY_MS);
+    }
+}

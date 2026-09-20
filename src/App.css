@@ -710,6 +710,16 @@ input {
   width: 115px;
   accent-color: #53724c;
 }
+.setting-range {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+.setting-range output {
+  color: #596153;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
 .setting-row select {
   min-width: 112px;
   padding: 7px 28px 7px 10px;

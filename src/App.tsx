@@ -112,10 +112,15 @@ function App() {
   }, [settings]);
   useEffect(() => {
     if (!desktop || !isMacOS) return;
-    void setHotCorner(settings.hotCorner).catch((reason) => {
-      setNotice({ text: `无法设置触发角：${String(reason)}`, error: true });
-    });
-  }, [settings.hotCorner]);
+    void setHotCorner(settings.hotCorner, settings.hotCornerDelayMs).catch(
+      (reason) => {
+        setNotice({
+          text: `无法设置触发角：${String(reason)}`,
+          error: true,
+        });
+      },
+    );
+  }, [settings.hotCorner, settings.hotCornerDelayMs]);
   useEffect(() => {
     const element = gridRef.current;
     if (!element) return;

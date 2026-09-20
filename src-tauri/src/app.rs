@@ -118,6 +118,7 @@ fn close_app(
 #[tauri::command]
 fn set_hot_corner(
     corner: HotCorner,
+    trigger_delay_ms: u64,
     state: tauri::State<'_, HotCornerState>,
 ) -> Result<(), String> {
     #[cfg(not(target_os = "macos"))]
@@ -125,7 +126,7 @@ fn set_hot_corner(
         return Err("触发角目前仅支持 macOS".into());
     }
 
-    state.set(corner)
+    state.set(corner, trigger_delay_ms)
 }
 
 #[tauri::command]
