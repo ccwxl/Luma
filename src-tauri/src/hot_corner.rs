@@ -40,7 +40,7 @@ mod macos {
     use tauri::{AppHandle, Manager};
 
     const POLL_INTERVAL: Duration = Duration::from_millis(50);
-    const TRIGGER_DELAY: Duration = Duration::from_millis(300);
+    const TRIGGER_DELAY: Duration = Duration::from_millis(150);
     const CORNER_MARGIN: f64 = 6.0;
 
     #[derive(Clone, Copy, Debug)]

@@ -84,7 +84,7 @@ export default function SettingsDialog({
           <label className="setting-row">
             <span>
               屏幕触发角
-              <small>鼠标在所选角落停留约 0.3 秒即可显示 Luma</small>
+              <small>鼠标在所选角落停留约 0.15 秒即可显示 Luma</small>
             </span>
             <select
               aria-label="屏幕触发角"
