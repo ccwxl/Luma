@@ -8,6 +8,7 @@
   </p>
 
   <p>
+    <a href="https://github.com/ccwxl/Luma/tree/main/src-tauri"><img alt="Rust" src="https://img.shields.io/badge/Rust-000000?style=flat-square&amp;logo=rust&amp;logoColor=white"></a>
     <a href="https://github.com/ccwxl/Luma/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/ccwxl/Luma?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;label=release&amp;color=5c6ac4"></a>
     <a href="https://github.com/ccwxl/Luma/actions/workflows/release.yml"><img alt="发布构建状态" src="https://github.com/ccwxl/Luma/actions/workflows/release.yml/badge.svg"></a>
     <a href="https://github.com/ccwxl/Luma/releases"><img alt="Total downloads" src="https://img.shields.io/github/downloads/ccwxl/Luma/total?style=flat-square&amp;label=downloads&amp;color=blue"></a>
