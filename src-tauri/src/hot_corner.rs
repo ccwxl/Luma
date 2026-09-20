@@ -35,13 +35,15 @@ mod macos {
     use super::{HotCorner, HotCornerState};
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSEvent, NSScreen};
+    use std::sync::{Arc, RwLock};
     use std::thread;
     use std::time::{Duration, Instant};
     use tauri::{AppHandle, Manager};
 
     const POLL_INTERVAL: Duration = Duration::from_millis(50);
     const TRIGGER_DELAY: Duration = Duration::from_millis(150);
-    const CORNER_MARGIN: f64 = 6.0;
+    const SCREEN_REFRESH_INTERVAL: Duration = Duration::from_secs(2);
+    const CORNER_MARGIN: f64 = 16.0;
 
     #[derive(Clone, Copy, Debug)]
     struct ScreenFrame {
@@ -87,10 +89,11 @@ mod macos {
             .collect()
     }
 
-    fn show_luma(app: &AppHandle) {
+    pub fn show(app: &AppHandle) {
         let Some(window) = app.get_webview_window("main") else {
             return;
         };
+        let _ = app.show();
         let _ = window.show();
         let _ = window.maximize();
         let _ = window.set_focus();
@@ -98,11 +101,12 @@ mod macos {
 
     pub fn start(app: AppHandle) {
         // setup 在 macOS 主线程执行，NSScreen 的坐标和 NSEvent 的鼠标坐标处于同一坐标系。
-        let frames = screen_frames();
-        if frames.is_empty() {
+        let initial_frames = screen_frames();
+        if initial_frames.is_empty() {
             eprintln!("无法读取屏幕边界，触发角监听未启动");
             return;
         }
+        let frames = Arc::new(RwLock::new(initial_frames));
 
         let _ = thread::Builder::new()
             .name("luma-hot-corner".into())
@@ -110,8 +114,25 @@ mod macos {
                 let mut entered_at: Option<Instant> = None;
                 let mut latched = false;
                 let mut previous_corner = HotCorner::Off;
+                let mut refreshed_at = Instant::now();
 
                 loop {
+                    if refreshed_at.elapsed() >= SCREEN_REFRESH_INTERVAL {
+                        refreshed_at = Instant::now();
+                        let shared_frames = Arc::clone(&frames);
+                        if let Err(err) = app.run_on_main_thread(move || {
+                            let updated = screen_frames();
+                            if !updated.is_empty() {
+                                match shared_frames.write() {
+                                    Ok(mut current) => *current = updated,
+                                    Err(err) => eprintln!("更新屏幕边界失败: {err}"),
+                                }
+                            }
+                        }) {
+                            eprintln!("刷新屏幕边界失败: {err}");
+                        }
+                    }
+
                     let corner = app.state::<HotCornerState>().get();
                     if corner != previous_corner {
                         previous_corner = corner;
@@ -126,8 +147,13 @@ mod macos {
 
                     let location = NSEvent::mouseLocation();
                     let inside = frames
-                        .iter()
-                        .any(|frame| frame.contains_corner(location.x, location.y, corner));
+                        .read()
+                        .map(|frames| {
+                            frames
+                                .iter()
+                                .any(|frame| frame.contains_corner(location.x, location.y, corner))
+                        })
+                        .unwrap_or(false);
 
                     if !inside {
                         entered_at = None;
@@ -137,7 +163,7 @@ mod macos {
                         if entered.elapsed() >= TRIGGER_DELAY {
                             latched = true;
                             let handle = app.clone();
-                            if let Err(err) = app.run_on_main_thread(move || show_luma(&handle)) {
+                            if let Err(err) = app.run_on_main_thread(move || show(&handle)) {
                                 eprintln!("触发角显示 Luma 失败: {err}");
                             }
                         }
@@ -171,7 +197,7 @@ mod macos {
 
         #[test]
         fn rejects_points_outside_the_corner_margin() {
-            assert!(!frame().contains_corner(-1430.0, 890.0, HotCorner::TopLeft));
+            assert!(!frame().contains_corner(-1420.0, 880.0, HotCorner::TopLeft));
             assert!(!frame().contains_corner(-1440.0, 900.0, HotCorner::Off));
         }
     }
@@ -179,6 +205,9 @@ mod macos {
 
 #[cfg(target_os = "macos")]
 pub use macos::start;
+
+#[cfg(target_os = "macos")]
+pub use macos::show;
 
 #[cfg(not(target_os = "macos"))]
 pub fn start(_app: tauri::AppHandle) {}
