@@ -1,7 +1,7 @@
 <div align="center">
   <img width="128" alt="Luma 应用图标" src="./src-tauri/icons/icon.png">
   <h1>Luma</h1>
-  <p>基于 Tauri 2、React 和 TypeScript 的桌面应用启动器，支持 macOS、Windows 和 Linux。</p>
+  <p>基于Rust、Tauri 2、React 的桌面应用启动器，支持 macOS、Windows 和 Linux。</p>
 
   <p>
     <a href="https://github.com/ccwxl/Luma/releases/latest"><img alt="下载最新版" src="https://img.shields.io/badge/下载-最新版-2ea44f?style=for-the-badge&amp;logo=github"></a>
