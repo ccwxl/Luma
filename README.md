@@ -8,9 +8,9 @@
   </p>
 
   <p>
-    <a href="https://github.com/ccwxl/Luma/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/ccwxl/Luma?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;label=最新版本&amp;color=5c6ac4"></a>
+    <a href="https://github.com/ccwxl/Luma/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/ccwxl/Luma?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;label=release&amp;color=5c6ac4"></a>
     <a href="https://github.com/ccwxl/Luma/actions/workflows/release.yml"><img alt="发布构建状态" src="https://github.com/ccwxl/Luma/actions/workflows/release.yml/badge.svg"></a>
-    <a href="https://github.com/ccwxl/Luma/releases"><img alt="总下载量" src="https://img.shields.io/github/downloads/ccwxl/Luma/total?style=flat-square&amp;label=下载量&amp;color=blue"></a>
+    <a href="https://github.com/ccwxl/Luma/releases"><img alt="Total downloads" src="https://img.shields.io/github/downloads/ccwxl/Luma/total?style=flat-square&amp;label=downloads&amp;color=blue"></a>
     <img alt="支持平台" src="https://img.shields.io/badge/平台-macOS%20%7C%20Windows%20%7C%20Linux-555?style=flat-square">
   </p>
 </div>
