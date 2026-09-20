@@ -1,6 +1,21 @@
-# Luma
+<div align="center">
+  <img width="128" alt="Luma 应用图标" src="./src-tauri/icons/icon.png">
+  <h1>Luma</h1>
+  <p>基于 Tauri 2、React 和 TypeScript 的桌面应用启动器，支持 macOS、Windows 和 Linux。</p>
 
-基于 Tauri 2、React 和 TypeScript 的桌面应用启动器，支持 Windows、Linux 和 macOS。
+  <p>
+    <a href="https://github.com/ccwxl/Luma/releases/latest"><img alt="下载最新版" src="https://img.shields.io/badge/下载-最新版-2ea44f?style=for-the-badge&amp;logo=github"></a>
+  </p>
+
+  <p>
+    <a href="https://github.com/ccwxl/Luma/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/ccwxl/Luma?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;label=最新版本&amp;color=5c6ac4"></a>
+    <a href="https://github.com/ccwxl/Luma/actions/workflows/release.yml"><img alt="发布构建状态" src="https://github.com/ccwxl/Luma/actions/workflows/release.yml/badge.svg"></a>
+    <a href="https://github.com/ccwxl/Luma/releases"><img alt="总下载量" src="https://img.shields.io/github/downloads/ccwxl/Luma/total?style=flat-square&amp;label=下载量&amp;color=blue"></a>
+    <img alt="支持平台" src="https://img.shields.io/badge/平台-macOS%20%7C%20Windows%20%7C%20Linux-555?style=flat-square">
+  </p>
+</div>
+
+---
 
 ## 界面与快捷键
 
