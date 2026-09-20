@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowClockwiseIcon, XIcon } from "@phosphor-icons/react";
-import type { Settings } from "../lib/settings";
+import type { HotCorner, Settings } from "../lib/settings";
 
 export default function SettingsDialog({
   open,
   settings,
+  showHotCorner,
   onChange,
   onClose,
   onClearCache,
@@ -12,6 +13,7 @@ export default function SettingsDialog({
 }: {
   open: boolean;
   settings: Settings;
+  showHotCorner: boolean;
   onChange: (settings: Settings) => void;
   onClose: () => void;
   onClearCache: () => Promise<void>;
@@ -76,6 +78,38 @@ export default function SettingsDialog({
           />
         </label>
       </section>
+      {showHotCorner && (
+        <section className="settings-section" aria-label="触发方式">
+          <h2>触发方式</h2>
+          <label className="setting-row">
+            <span>
+              屏幕触发角
+              <small>鼠标在所选角落停留约 0.3 秒即可显示 Luma</small>
+            </span>
+            <select
+              aria-label="屏幕触发角"
+              value={settings.hotCorner}
+              onChange={(event) =>
+                onChange({
+                  ...settings,
+                  hotCorner: event.target.value as HotCorner,
+                })
+              }
+            >
+              <option value="off">关闭</option>
+              <option value="top-left">左上角</option>
+              <option value="top-right">右上角</option>
+              <option value="bottom-left">左下角</option>
+              <option value="bottom-right">右下角</option>
+            </select>
+          </label>
+          {settings.hotCorner !== "off" && (
+            <p className="setting-note">
+              启用后，关闭 Luma 将改为隐藏到后台；在菜单栏中选择退出可完全结束进程。请避免与系统触发角使用同一位置。
+            </p>
+          )}
+        </section>
+      )}
       <section className="settings-section" aria-label="图标缓存">
         <h2>图标缓存</h2>
         <div className="setting-row">
@@ -126,7 +160,7 @@ export default function SettingsDialog({
             </dd>
           </div>
           <div>
-            <dt>关闭应用</dt>
+            <dt>{settings.hotCorner === "off" ? "关闭应用" : "隐藏应用"}</dt>
             <dd>
               <kbd>Esc</kbd>
             </dd>

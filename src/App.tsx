@@ -28,6 +28,7 @@ import {
   launchApp,
   preloadAppIcons,
   revealApp,
+  setHotCorner,
   type AppInfo,
 } from "./lib/apps";
 import {
@@ -45,6 +46,7 @@ type AppContextMenu = {
 };
 
 const userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent;
+const isMacOS = /Macintosh|Mac OS X/.test(userAgent);
 const fileManagerName = /Mac|iPhone|iPad/.test(userAgent)
   ? "Finder"
   : /Windows/.test(userAgent)
@@ -108,6 +110,12 @@ function App() {
   useEffect(() => {
     saveSettings(settings);
   }, [settings]);
+  useEffect(() => {
+    if (!desktop || !isMacOS) return;
+    void setHotCorner(settings.hotCorner).catch((reason) => {
+      setNotice({ text: `无法设置触发角：${String(reason)}`, error: true });
+    });
+  }, [settings.hotCorner]);
   useEffect(() => {
     const element = gridRef.current;
     if (!element) return;
@@ -176,6 +184,17 @@ function App() {
   }, [contextMenu]);
 
   useEffect(() => {
+    const focusSearch = () => {
+      if (settingsOpen || sortOpen || contextMenu) return;
+      requestAnimationFrame(() =>
+        searchRef.current?.focus({ preventScroll: true }),
+      );
+    };
+    window.addEventListener("focus", focusSearch);
+    return () => window.removeEventListener("focus", focusSearch);
+  }, [settingsOpen, sortOpen, contextMenu]);
+
+  useEffect(() => {
     if (loading || settingsOpen || closed) return;
     preloadAppIcons(pages[currentPage] ?? [], 0);
     preloadAppIcons(
@@ -215,8 +234,12 @@ function App() {
   );
 
   const handleClose = useCallback(async () => {
+    setSettingsOpen(false);
+    setSortOpen(false);
+    setContextMenu(null);
+    setSearch("");
+    setPage(0);
     if (!desktop) {
-      setSettingsOpen(false);
       setClosed(true);
       return;
     }
@@ -528,6 +551,7 @@ function App() {
               }}
               aria-label="搜索应用"
               placeholder="搜索"
+              autoFocus
               autoComplete="off"
               spellCheck={false}
             />
@@ -837,6 +861,7 @@ function App() {
       <SettingsDialog
         open={settingsOpen}
         settings={settings}
+        showHotCorner={isMacOS}
         onChange={setSettings}
         onClose={() => setSettingsOpen(false)}
         onExit={() => void handleClose()}

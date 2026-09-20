@@ -642,6 +642,7 @@ input {
 .settings-dialog {
   width: min(440px, calc(100vw - 32px));
   max-height: calc(100svh - 48px);
+  overflow-y: auto;
   padding: 24px;
   margin: auto;
   border: 1px solid #ffffffa0;
@@ -708,6 +709,21 @@ input {
 .setting-row input[type="range"] {
   width: 115px;
   accent-color: #53724c;
+}
+.setting-row select {
+  min-width: 112px;
+  padding: 7px 28px 7px 10px;
+  border: 1px solid #53684c20;
+  border-radius: 8px;
+  color: inherit;
+  background: #fff8;
+  font: inherit;
+}
+.setting-note {
+  margin: 10px 0 0;
+  color: #747b6e;
+  font-size: 11px;
+  line-height: 1.55;
 }
 .settings-action {
   display: flex;

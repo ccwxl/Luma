@@ -1,5 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import type { HotCorner } from "./settings";
 
 export interface AppInfo {
   name: string;
@@ -34,6 +35,10 @@ export async function revealApp(app: AppInfo) {
 
 export async function closeApp() {
   if (desktop) await invoke("close_app");
+}
+
+export async function setHotCorner(corner: HotCorner) {
+  if (desktop) await invoke("set_hot_corner", { corner });
 }
 
 type IconRecord = {

@@ -1,8 +1,10 @@
 //! Luma 应用入口：注册 Tauri 命令并初始化桌面应用。
 
+mod hot_corner;
 pub mod icon_cache;
 pub mod platform;
 
+use hot_corner::{HotCorner, HotCornerState};
 use icon_cache::IconCache;
 pub use platform::AppInfo;
 use std::collections::HashMap;
@@ -95,8 +97,35 @@ async fn clear_icon_cache(cache: tauri::State<'_, Arc<IconCache>>) -> Result<(),
 }
 
 #[tauri::command]
-fn close_app(app: tauri::AppHandle) {
+fn close_app(
+    app: tauri::AppHandle,
+    hot_corner: tauri::State<'_, HotCornerState>,
+) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    if hot_corner.enabled() {
+        let window = app.get_webview_window("main").ok_or("Luma 主窗口不存在")?;
+        window.hide().map_err(|err| err.to_string())?;
+        return Ok(());
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    let _ = hot_corner;
+
     app.exit(0);
+    Ok(())
+}
+
+#[tauri::command]
+fn set_hot_corner(
+    corner: HotCorner,
+    state: tauri::State<'_, HotCornerState>,
+) -> Result<(), String> {
+    #[cfg(not(target_os = "macos"))]
+    if corner != HotCorner::Off {
+        return Err("触发角目前仅支持 macOS".into());
+    }
+
+    state.set(corner)
 }
 
 #[tauri::command]
@@ -110,6 +139,7 @@ async fn launch_app(app_path: String) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .manage(AppCatalog::default())
+        .manage(HotCornerState::default())
         .setup(|app| {
             app.manage(Arc::new(IconCache::new(
                 app.path().app_cache_dir()?.join("icons"),
@@ -136,6 +166,8 @@ pub fn run() {
                 }
             }
 
+            hot_corner::start(app.handle().clone());
+
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -145,6 +177,7 @@ pub fn run() {
             get_app_icons,
             clear_icon_cache,
             close_app,
+            set_hot_corner,
             launch_app
         ])
         .run(tauri::generate_context!())
